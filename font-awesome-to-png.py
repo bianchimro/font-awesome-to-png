@@ -411,7 +411,7 @@ class ListAction(argparse.Action):
             print(icon)
         exit(0)
 
-def export_icon(icon, size, filename, font, color):
+def export_icon(icon, size, filename, font, color, stickon="", stick_x=0, stick_y=0):
     image = Image.new("RGBA", (size, size), color=(0,0,0,0))
 
     draw = ImageDraw.Draw(image)
@@ -422,8 +422,16 @@ def export_icon(icon, size, filename, font, color):
     # Determine the dimensions of the icon
     width,height = draw.textsize(icons[icon], font=font)
 
-    draw.text(((size - width) / 2, (size - height) / 2), icons[icon],
-            font=font, fill=color)
+    text_x = (size - width) / 2
+    text_y = (size - height) / 2
+
+    #icon
+    draw.text((text_x+2, text_y+2), icons[icon],font=font, fill='black')
+    
+    draw.text((text_x, text_y), icons[icon], font=font, fill=color)
+
+    
+
 
     # Get bounding box
     bbox = image.getbbox()
@@ -434,13 +442,33 @@ def export_icon(icon, size, filename, font, color):
     borderw = int((size - (bbox[2] - bbox[0])) / 2)
     borderh = int((size - (bbox[3] - bbox[1])) / 2)
 
-    # Create background image
-    bg = Image.new("RGBA", (size, size), (0,0,0,0))
+    
 
-    bg.paste(image, (borderw,borderh))
+    if stickon:
+        target = Image.open(stickon)
+        iconname = "icon_" + filename
+        new_im = Image.new('RGBA', target.size)
+        new_im.paste(target, (0,0))
+        
+        ix, iy = new_im.size
+        jx, jy = image.size
 
-    # Save file
-    bg.save(filename)
+        center_x = (ix-jx)/2
+        center_y = (iy-jy)/2
+
+
+        new_im.paste(image, (center_x + stick_x,center_y + stick_y),mask=image)
+        new_im.save(iconname)
+
+    if 1:
+        # Create background image
+        bg = Image.new("RGBA", (size, size), (0,0,0,0))
+        bg.paste(image, (borderw,borderh))
+        # Save file
+        bg.save(filename)
+
+
+
 
 parser = argparse.ArgumentParser(
         description="Exports Font Awesome icons as PNG images.")
@@ -459,11 +487,25 @@ parser.add_argument("--list", nargs=0, action=ListAction,
 parser.add_argument("--size", type=int, default=16,
         help="Icon size in pixels (default: 16)")
 
+parser.add_argument("--stickon", type=str,
+        help="the png to stick on", default="")
+
+parser.add_argument("--stick-x", type=int, default=0,
+        help="Icon size in pixels (default: 16)")
+
+parser.add_argument("--stick-y", type=int, default=0,
+        help="Icon size in pixels (default: 16)")
+
+
 args = parser.parse_args()
 icon = args.icon
 size = args.size
 font = args.font
 color = args.color
+stickon = args.stickon
+stick_x = args.stick_x
+stick_y = args.stick_y
+
 
 if args.font:
     if not path.isfile(args.font) or not access(args.font, R_OK):
@@ -503,5 +545,5 @@ for icon in selected_icons:
     print("Exporting icon \"%s\" as %s (%ix%i pixels)" %
             (icon, filename, size, size))
 
-    export_icon(icon, size, filename, font, color)
+    export_icon(icon, size, filename, font, color, stickon=stickon, stick_x=stick_x, stick_y=stick_y)
 
